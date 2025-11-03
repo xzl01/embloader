@@ -40,6 +40,7 @@ Architecture: all
 Depends: embloader (= ${binary:Version}),
          systemd-boot,
          ${misc:Depends}
+Interest: /usr/share/embloader
 Description: Make systemd-boot use embloader
  This package diverts the systemd-boot EFI binaries to use embloader instead.
  It provides drop-in compatibility with systemd-boot while using embloader's

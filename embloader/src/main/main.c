@@ -15,6 +15,14 @@
 
 embloader g_embloader = {};
 
+/* Provide systemd-boot compatible LoaderInfo marker so tools like bootctl
+ * can extract the embedded version string from the EFI binary. The format
+ * must match systemd-boot's expectation: it looks for the marker
+ * "#### LoaderInfo: " and a terminating " ####" sequence.
+ */
+static const char loader_info_marker[] __attribute__((used)) =
+	"#### LoaderInfo: embloader " EMBLOADER_VERSION " ####";
+
 static int sysinfo_print(const char *str) {
 	log_print(LOG_DEBUG, "sysinfo", str);
 	return 0;

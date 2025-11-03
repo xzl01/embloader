@@ -3,6 +3,52 @@ set -e
 
 PACKAGE="sdboot-is-embloader"
 
+remove_embloader() {
+    case "$(dpkg --print-architecture)" in
+        amd64)
+        efi_arch_upper=X64
+        efi_arch=x64
+        ;;
+        arm64)
+        efi_arch_upper=AA64
+        efi_arch=aa64
+        ;;
+        i386)
+        efi_arch_upper=IA32
+        efi_arch=ia32
+        ;;
+        riscv64)
+        efi_arch_upper=RISCV64
+        efi_arch=riscv64
+        ;;
+        *)
+        return
+    esac
+
+    # shellcheck disable=SC1091
+    . /etc/os-release || . /usr/lib/os-release
+    vendor="${ID:-debian}"
+    vendor_upper="$(echo "$vendor" | cut -c1 | tr '[:lower:]' '[:upper:]')$(echo "$vendor" | cut -c2-)"
+
+    esp_path="$(bootctl --quiet --print-esp-path 2>/dev/null)"
+    if [ -z "$esp_path" ]; then
+        return
+    fi
+
+    # Remove embloader from ESP if it was installed there
+    if [ -f "${esp_path}/EFI/BOOT/BOOT${efi_arch_upper}.efi" ] && \
+            [ -f "/usr/share/embloader/embloader.efi" ] && \
+            [ "$(<"${esp_path}/EFI/BOOT/BOOT${efi_arch_upper}.efi" sha256sum)" = "$(<"/usr/share/embloader/embloader.efi" sha256sum)" ]; then
+        rm -f "${esp_path}/EFI/BOOT/BOOT${efi_arch_upper}.efi"
+    fi
+
+    # Remove embloader boot entry if it exists
+    if efibootmgr | grep -i -q "Boot.*${vendor_upper}.*EFI\\\\BOOT\\\\BOOT${efi_arch_upper}.efi"; then
+        bootentry="$(efibootmgr | grep -i "Boot.*${vendor_upper}.*EFI\\\\BOOT\\\\BOOT${efi_arch_upper}.efi" | cut -d' ' -f1 | sed -e 's/Boot//' -e 's/*//')"
+        efibootmgr -q --delete-bootnum --bootnum "$bootentry"
+    fi
+}
+
 case "$1" in
     remove|deconfigure)
         ARCH=$(dpkg --print-architecture)
@@ -34,6 +80,9 @@ case "$1" in
         if dpkg-divert --list "$SDBOOT_PATH" | grep -q "$PACKAGE"; then
             dpkg-divert --package "$PACKAGE" --rename --remove "$SDBOOT_PATH"
         fi
+
+        # Remove embloader from ESP
+        remove_embloader
         ;;
 esac
 
