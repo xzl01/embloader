@@ -37,9 +37,12 @@ remove_embloader() {
 
     # Remove embloader from ESP if it was installed there
     if [ -f "${esp_path}/EFI/BOOT/BOOT${efi_arch_upper}.efi" ] && \
-            [ -f "/usr/share/embloader/embloader.efi" ] && \
-            [ "$(<"${esp_path}/EFI/BOOT/BOOT${efi_arch_upper}.efi" sha256sum)" = "$(<"/usr/share/embloader/embloader.efi" sha256sum)" ]; then
-        rm -f "${esp_path}/EFI/BOOT/BOOT${efi_arch_upper}.efi"
+            [ -f "/usr/share/embloader/embloader.efi" ]; then
+        esp_hash=$(sha256sum "${esp_path}/EFI/BOOT/BOOT${efi_arch_upper}.efi" | cut -d' ' -f1)
+        emb_hash=$(sha256sum "/usr/share/embloader/embloader.efi" | cut -d' ' -f1)
+        if [ "$esp_hash" = "$emb_hash" ]; then
+            rm -f "${esp_path}/EFI/BOOT/BOOT${efi_arch_upper}.efi"
+        fi
     fi
 
     # Remove embloader boot entry if it exists
